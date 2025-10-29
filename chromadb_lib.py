@@ -42,7 +42,7 @@ class ChromaHotelSearch:
         self,
         df: pd.DataFrame,
         id_col: str = " HotelCode",
-        country_col: str = " countyName",  # your CSV uses countyName/countyCode for country
+        country_col: str = " countyName",  
         city_col: str = " cityName",
         rating_col: str = " HotelRating",
         name_col: str = " HotelName",
