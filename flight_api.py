@@ -38,10 +38,10 @@ def search_flights_api(query: TripQuery) -> list:
     
     # --- !! IMPORTANT !! ---
     # You must fill in your API host and headers here.
-    HEADERS = {
-        'x-rapidapi-key': "6dcaac63a6msh5c34eaa068a9b9fp1ac3dajsn08eb995e94f6",
-        'x-rapidapi-host': "booking-com15.p.rapidapi.com",
-    }
+    # HEADERS = {
+    #     'x-rapidapi-key': "6dcaac63a6msh5c34eaa068a9b9fp1ac3dajsn08eb995e94f6",
+    #     'x-rapidapi-host': "booking-com15.p.rapidapi.com",
+    # }
     # -----------------------
 
     # Build the query parameters dictionary from the TripQuery object
