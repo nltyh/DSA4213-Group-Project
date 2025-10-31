@@ -168,6 +168,8 @@ class ChromaHotelSearch:
                 "city": m.get("city"),
                 "rating": m.get("rating"),
                 "rating_raw": m.get("rating_raw"),
+                "address": m.get("address"),
+                "website": m.get("website"),
                 "distance": dists[i],
             }
             if include_docs:
