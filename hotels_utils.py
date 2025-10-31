@@ -14,8 +14,35 @@ def init_hotel_index(
         embedding_model=embedding_model,
     )
 
-def ingest_hotels(hotels: ChromaHotelSearch, df_hotel: pd.DataFrame) -> None:
-    hotels.upsert_hotels_from_df(df_hotel)
+def ingest_hotels(
+    hotels: ChromaHotelSearch, 
+    df_hotel: pd.DataFrame,
+    country: str,
+    city: str,
+    country_col: str = " countyName", # Note: your example has a leading space
+    city_col: str = " cityName"     # Note: your example has a leading space
+) -> None:
+    """
+    Filters the DataFrame for a specific city/country BEFORE upserting.
+    """
+    
+    # --- CHANGE: PRE-FILTERING THE DATAFRAME ---
+    print(f"Original hotel DataFrame count: {len(df_hotel)}")
+    
+    # Use the exact column names from your example
+    filtered_df = df_hotel[
+        (df_hotel[country_col] == country) & 
+        (df_hotel[city_col] == city)
+    ].copy()
+    
+    if filtered_df.empty:
+        print(f"Warning: No hotels found for {city}, {country}. No data ingested.")
+        return
+        
+    print(f"Filtered count for {city}, {country}: {len(filtered_df)}")
+    
+    # Upsert only the filtered DataFrame
+    hotels.upsert_hotels_from_df(filtered_df)
 
 def search_hotels(
     hotels: ChromaHotelSearch,

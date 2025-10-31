@@ -81,7 +81,9 @@ class ChromaHotelSearch:
                 "rating_raw": self._safe_str(r.get(rating_col)),
                 "name": self._safe_str(r.get(name_col)),
                 "address": self._safe_str(r.get(addr_col)),
-                "website": self._safe_str(r.get(website_col))
+                "website": self._safe_str(r.get(website_col)),
+                "description": self._safe_str(r.get(desc_col)),
+                "facilities": self._safe_str(r.get(fac_col))
             }
 
             ids.append(f"hotel:{meta['hotel_code']}")
@@ -171,6 +173,8 @@ class ChromaHotelSearch:
                 "address": m.get("address"),
                 "website": m.get("website"),
                 "distance": dists[i],
+                "description": m.get("description"),
+                "facilities": m.get("facilities"),
             }
             if include_docs:
                 item["document"] = docs[i]
