@@ -1,6 +1,7 @@
 from amadeus import Client, ResponseError, NetworkError
-import json, http.client, ssl, certifi
+import json,re, http.client, ssl, certifi
 import pandas as pd
+from typing import Optional, Tuple
 from urllib.parse import urlencode
 from datetime import date
 from typing import Optional, Literal
@@ -259,3 +260,94 @@ def summarize_flights(
         for line in lines:
             print(line)
     return lines
+
+
+#--- static flight utils --- 
+_FLIGHT_ROW_RE = re.compile(
+    r"""Outbound:\s*
+        (?P<origin>[A-Z]{3})\s+
+        (?P<out_dep_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
+        (?P<destination>[A-Z]{3})\s+
+        (?P<out_arr_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*\|\s*
+        (?P<airlines>[^|]+?)\s*\|\s*
+        (?P<currency>[A-Z]{3})\s*
+        (?P<price>[\d,\.]+)\s*\|\s*
+        A(?P<adults>\d+)\s*C(?P<children>\d+)\s*
+        (?P<cabin>[A-Z ]+?)\s*\|\|\s*
+        Return\s*:\s*
+        (?P<ret_origin>[A-Z]{3})\s+
+        (?P<ret_dep_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
+        (?P<ret_destination>[A-Z]{3})\s+
+        (?P<ret_arr_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})
+    """,
+    re.VERBOSE
+)
+
+def parse_flights_df(df: pd.DataFrame, summary_col: str = "summary") -> pd.DataFrame:
+    """
+    Parse a one-column summary DataFrame into a structured flights table.
+    Returns a new DataFrame with typed columns and derived durations/prices.
+    """
+    if summary_col not in df.columns:
+        raise KeyError(f"Column '{summary_col}' not found in df")
+
+    parsed = df[summary_col].str.extract(_FLIGHT_ROW_RE)
+
+    parsed["adults"] = parsed["adults"].fillna(0).astype(int)
+    parsed["children"] = parsed["children"].fillna(0).astype(int)
+
+    for c in ["out_dep_dt", "out_arr_dt", "ret_dep_dt", "ret_arr_dt"]:
+        parsed[c] = pd.to_datetime(parsed[c], errors="coerce")
+
+    parsed["price"] = (
+        parsed["price"].astype(str).str.replace(",", "", regex=False).astype(float)
+    )
+
+    parsed["cabin"] = parsed["cabin"].astype(str).str.strip()
+    parsed["airlines"] = parsed["airlines"].astype(str).str.strip()
+    parsed["currency"] = parsed["currency"].astype(str).str.strip()
+
+    
+    parsed["out_dur_h"] = (parsed["out_arr_dt"] - parsed["out_dep_dt"]).dt.total_seconds() / 3600
+    parsed["ret_dur_h"] = (parsed["ret_arr_dt"] - parsed["ret_dep_dt"]).dt.total_seconds() / 3600
+    parsed["total_dur_h"] = parsed["out_dur_h"].fillna(0) + parsed["ret_dur_h"].fillna(0)
+
+    parsed["total_price"] = parsed["price"]
+
+    return parsed
+
+def pick_flight(
+    table: pd.DataFrame,
+    *,
+    origin: str,
+    destination: str,
+    start_date,  # str | date | Timestamp
+    end_date,    # str | date | Timestamp
+    fare_type: str
+) -> Tuple[Optional[pd.Series], pd.DataFrame]:
+    sd = pd.to_datetime(start_date).date()
+    ed = pd.to_datetime(end_date).date()
+
+    cand = table[
+        (table["origin"] == origin) &
+        (table["destination"] == destination) &
+        (table["cabin"].str.upper() == fare_type.upper()) &
+        (table["out_dep_dt"].dt.date == sd)
+    ].copy()
+
+    return cand
+
+def _dtfmt(ts): 
+    return pd.to_datetime(ts).strftime("%d %b %Y %H:%M")
+
+def flights_context(cands: pd.DataFrame)->str:
+    if cands.empty:
+        return "No flight options matched the filters."
+    lines=[]
+    for _, r in cands.iterrows():
+        lines.append(
+            f"* {r['airlines']} — {r['origin']} {_dtfmt(r['out_dep_dt'])} → {r['destination']} {_dtfmt(r['out_arr_dt'])} "
+            f"|| Return {r['ret_origin']} {_dtfmt(r['ret_dep_dt'])} → {r['ret_destination']} {_dtfmt(r['ret_arr_dt'])} "
+            f"| {r['currency']} {r['total_price']:.2f} | A{r['adults']} C{r['children']} {r['cabin'].upper()}"
+        )
+    return "\n".join(lines)
