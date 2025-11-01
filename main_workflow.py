@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import streamlit as st
 import numpy as np
 from IPython.display import display
 import chromadb_lib as cdb
@@ -52,8 +53,60 @@ Formatting Rules:
 - Dates/times format: “DD Mon YYYY HH:MM”.
 """
 
-hotels_df = pd.read_parquet("hotels.parquet")
-flights_df = pd.read_csv("flights_data.csv")
+@st.cache_data
+def load_data():
+    """Loads dataframes. Creates mock data if files are missing."""
+    try:
+        flights_df = pd.read_csv("flights_data.csv")
+    except FileNotFoundError:
+        st.warning("flights_data.csv not found. Using mock flight data.")
+        flights_df = pd.DataFrame({
+            'origin_iata': ['ZRH', 'LHR'], 'destination_iata': ['FCO', 'JFK'],
+            'departure_date': ['2025-11-10 18:00:00', '2025-12-01 09:00:00'],
+            'arrival_date': ['2025-11-10 19:30:00', '2025-12-01 12:00:00'],
+            'return_departure_date': ['2025-11-24 20:00:00', '2025-12-10 18:00:00'],
+            'return_arrival_date': ['2025-11-24 21:30:00', '2025-12-11 07:00:00'],
+            'airline': ['Swiss', 'British Airways'], 'price': [350.00, 600.00],
+            'currency': ['USD', 'USD'], 'fare_type': ['ECONOMY', 'BUSINESS'],
+            'passenger_breakdown': ['A1 C0', 'A2 C0']
+        })
+    
+    try:
+        hotels_df = pd.read_parquet("hotels.parquet")
+    except FileNotFoundError:
+        st.warning("hotels.parquet not found. Using mock hotel data.")
+        hotels_df = pd.DataFrame({
+            ' HotelCode': ["101", "102"],
+            ' countyName': ["Italy", "United States"],
+            ' cityName': ["Rome", "New York,   NY"],
+            ' HotelRating': ["FiveStar", "FourStar"],
+            ' HotelName': ["Hotel Roma", "The Big Apple Hotel"],
+            ' Description': ["A lovely hotel in the center of Rome.", "Great views of the city."],
+            ' Attractions': ["Colosseum", "Times Square"],
+            ' HotelFacilities': ["Wifi, Pool, Spa", "Wifi, Gym, Restaurant"],
+            ' Address': ["123 Via Roma", "456 5th Ave"],
+            ' HotelWebsiteUrl': ["http://hotelroma.com", "http://bighotel.com"]
+        })
+    return flights_df, hotels_df
+
+@st.cache_resource
+def init_models_and_index():
+    """Initializes and caches the GenAI models and the ChromaDB index."""
+    extractor_model = genai.GenerativeModel(
+        "gemini-2.5-flash",
+        generation_config={"response_mime_type": "application/json"}
+    )
+
+    agent_model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=SYSTEM_PROMPT
+    )
+
+    hotels_index = hu.init_hotel_index(
+        "./chroma_storage", "hotel_information", "all-MiniLM-L6-v2"
+    )
+
+    return extractor_model, agent_model, hotels_index
 
 TimeWindow = Literal["morning","afternoon","evening","night"]
 
@@ -73,16 +126,13 @@ class TripQuery(BaseModel):
     hotel_min_rating: Optional[float] = None
     hotel_prefs_text: Optional[str] = None
 
-def extractor(text: str) -> Optional[TripQuery]:
+def extractor(text: str, extractor_model) -> Optional[TripQuery]:
     """
     Parses user text into a TripQuery object using a Generative AI model.
     """
     # Initialize the Generative Model with JSON mode enabled
     try:
-        model = genai.GenerativeModel(
-            'gemini-2.5-flash',
-            generation_config={"response_mime_type": "application/json"}
-        )
+        model = extractor_model
     except Exception as e:
         print(f"Error initializing the model: {e}")
         return None
@@ -162,13 +212,13 @@ def hotels_context(hits)->str:
     return "\n".join(lines)
 
 def run_travel_bot(user_input: str):
+    extractor_model, agent_model, hotels_index = init_models_and_index()
+    flights_df, hotels_df = load_data()
 
-    trip = extractor(user_input)
+    trip = extractor(user_input, extractor_model)
 
-    hotels_index = hu.init_hotel_index("./chroma_storage", "hotel_information", "all-MiniLM-L6-v2")
     hu.ingest_hotels(hotels_index, hotels_df, country= trip.hotel_country, city= trip.hotel_city)
 
-    #flight_results= fa.search_flights_api(trip)
     parsed_flights = fa.parse_flights_df(flights_df, summary_col ="summary")
 
     flight_results = fa.pick_flight(
@@ -182,7 +232,8 @@ def run_travel_bot(user_input: str):
 
     flight_context = fa.flights_context(flight_results)
 
-    # Flights
+    # Flights api calls
+    #flight_results= fa.search_flights_api(trip)
     #flight_context = "\n".join(flight_results)
 
     # Hotels: semantic prefs + filters
@@ -210,15 +261,8 @@ def run_travel_bot(user_input: str):
 
     Follow the Output Format exactly. If any required field is missing in context, state what is missing and ask the user for it (instead of guessing)."""
 
-    # Attach the system prompt when you create the model
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        system_instruction=SYSTEM_PROMPT
-    )
-
-    # Generate a response using the model
-    resp = model.generate_content([FORMAT_RULES, user_task])
-    return resp.text
+    resp = agent_model.generate_content([FORMAT_RULES, user_task])
+    return resp.text, CTX
 
 if __name__ == 'main':
     user_input = input('Enter your travel details: ')
