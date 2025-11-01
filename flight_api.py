@@ -27,51 +27,32 @@ class TripQuery(BaseModel):
     hotel_prefs_text: Optional[str] = None
     
 def search_flights_api(query: TripQuery) -> list:
-    """
-    Calls the flight search API based on a validated TripQuery.
-    
-    Args:
-        query: A TripQuery object containing the user's request.
-        
-    Returns:
-        A list of strings summarizing the flight results.
-    """
-    
-    # --- !! IMPORTANT !! ---
-    # You must fill in your API host and headers here.
-    # HEADERS = {
-    #     'x-rapidapi-key': "6dcaac63a6msh5c34eaa068a9b9fp1ac3dajsn08eb995e94f6",
-    #     'x-rapidapi-host': "booking-com15.p.rapidapi.com",
-    # }
+    HEADERS = {
+        'x-rapidapi-key': "6dcaac63a6msh5c34eaa068a9b9fp1ac3dajsn08eb995e94f6",
+        'x-rapidapi-host': "booking-com15.p.rapidapi.com",
+    }
     # -----------------------
-
-    # Build the query parameters dictionary from the TripQuery object
     params = {
         "fromId": f"{query.origin}.AIRPORT",
         "toId": f"{query.destination}.AIRPORT",
         "adults": query.adults,
         "children": query.children,
         "cabinClass": query.cabin,
-        # Add static parameters from your example
+        # Static params to be optimised
         "stops": "none",
         "pageNo": "1",
         "sort": "BEST",
-        "currency_code": "SGD" # Or make this dynamic if needed
+        "currency_code": "SGD" # can make dynamic if needed
     }
     
-    # Add dates only if they are provided
     if query.start_date:
         params["departDate"] = query.start_date.isoformat()
         
     if query.end_date:
         params["returnDate"] = query.end_date.isoformat()
     else:
-        # Handle one-way vs. round-trip logic if API requires it
-        # For this example, we assume 'returnDate' is optional
         pass
-
-    # Construct the final endpoint
-    # urllib.parse.urlencode handles special characters
+    
     endpoint_path = "/api/v1/flights/searchFlights"
     query_string = urlencode(params)
     full_endpoint = f"{endpoint_path}?{query_string}"
@@ -97,7 +78,7 @@ def search_flights_api(query: TripQuery) -> list:
         # --- Decode JSON ---
         result = json.loads(data.decode("utf-8"))
 
-        # --- Summarize results using your existing function ---
+        # --- Summarize results ---
         lines = summarize_flights(
             result, 
             limit=5, 
@@ -169,17 +150,14 @@ def summarize_flights(
 
     def _infer_fare_type(offer, segments, cabin_arg):
         if cabin_arg: return cabin_arg
-        # try from first segment/leg
         seg0 = segments[0] if segments else None
         if isinstance(seg0, dict):
             v = seg0.get("cabinClass")
             if not v and isinstance(seg0.get("legs"), list) and seg0["legs"]:
                 v = seg0["legs"][0].get("cabinClass")
             if v: return v
-        # occasionally present at offer-level
         return offer.get("cabinClass")
 
-    # --- gather offers (same logic you had) ---
     candidates = []
     if isinstance(result, list):
         candidates = result
@@ -219,7 +197,6 @@ def summarize_flights(
     if not offers:
         return ["No offers found"]
 
-    # normalize adults/children/fare once (applies to all lines produced by this call)
     ch_ct = _children_count(children)
 
     lines = []
@@ -228,17 +205,13 @@ def summarize_flights(
         price_str = _fmt_money(ccy, units, nanos)
 
         segments = offer.get("segments", [])
-        # outbound (idx 0), return (idx 1) if present
         out_seg = segments[0] if len(segments) >= 1 else None
         ret_seg = segments[1] if len(segments) >= 2 else None
 
-        # carriers: collect from all segments in the offer (your original behavior)
         carriers = ", ".join(_carriers_from_segments(segments))
 
-        # outbound fields
         out_dep, out_dt, out_arr, out_at = _dep_arr_from_segment(out_seg)
 
-        # attach pax + fare info to the outbound line
         fare = _infer_fare_type(offer, segments, cabinClass)
         extras = []
         if adults is not None: extras.append(f"A{adults}")
@@ -249,8 +222,7 @@ def summarize_flights(
 
         line = f"{i:02d}. Outbound: {out_dep or '?'} {out_dt or '?'} → {out_arr or '?'} {out_at or '?'} | {carriers} | {price_str}{extra_txt}"
         lines.append(line)
-
-        # return line (unchanged format; keeps your two-line style)
+        
         if ret_seg is not None:
             ret_dep, ret_dt, ret_arr, ret_at = _dep_arr_from_segment(ret_seg)
             ret_line = f"    Return : {ret_dep or '?'} {ret_dt or '?'} → {ret_arr or '?'} {ret_at or '?'}"
@@ -321,8 +293,8 @@ def pick_flight(
     *,
     origin: str,
     destination: str,
-    start_date,  # str | date | Timestamp
-    end_date,    # str | date | Timestamp
+    start_date,  
+    end_date,    
     fare_type: str
 ) -> Tuple[Optional[pd.Series], pd.DataFrame]:
     sd = pd.to_datetime(start_date).date()

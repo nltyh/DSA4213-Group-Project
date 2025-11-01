@@ -22,7 +22,6 @@ class ChromaHotelSearch:
         self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedding_model
         )
-        # Create or get collection
         try:
             self.collection = self.client.get_collection(
                 name=collection_name,
@@ -36,7 +35,7 @@ class ChromaHotelSearch:
                 embedding_function=self.embedding_function
             )
 
-    # ------------ Public API ------------
+    # ------------ Hotels embedding ------------
 
     def upsert_hotels_from_df(
         self,
@@ -59,7 +58,6 @@ class ChromaHotelSearch:
         ids, docs, metas = [], [], []
 
         for _, r in df.iterrows():
-            # Build document (what we embed)
             doc = self._build_document(
                 name=r.get(name_col),
                 description=r.get(desc_col),
@@ -70,14 +68,13 @@ class ChromaHotelSearch:
                 address=r.get(addr_col)
             )
 
-            # Parse rating as a normalized categorical/numeric
             rating_val = self._normalize_rating(r.get(rating_col))
 
             meta = {
                 "hotel_code": self._safe_str(r.get(id_col)),
                 "country": self._safe_str(r.get(country_col)),
                 "city": self._safe_str(r.get(city_col)),
-                "rating": rating_val,  # e.g., 4.0 for "FourStar"
+                "rating": rating_val, 
                 "rating_raw": self._safe_str(r.get(rating_col)),
                 "name": self._safe_str(r.get(name_col)),
                 "address": self._safe_str(r.get(addr_col)),
@@ -90,7 +87,6 @@ class ChromaHotelSearch:
             docs.append(doc)
             metas.append(meta)
 
-            # Batched upserts to keep memory in check
             if len(ids) >= batch_size:
                 self.collection.upsert(ids=ids, documents=docs, metadatas=metas)
                 ids, docs, metas = [], [], []
@@ -104,9 +100,9 @@ class ChromaHotelSearch:
         top_n: int = 5,
         country: Optional[str] = None,
         city: Optional[str] = None,
-        min_rating: Optional[float] = None,   # e.g., 4.0 to mean >= 4 stars
-        rating_in: Optional[List[str]] = None,  # filter by raw labels (e.g., ["FourStar","FiveStar"])
-        extra_where: Optional[Dict[str, Any]] = None,  # pass through extra Chroma where filters
+        min_rating: Optional[float] = None,   
+        rating_in: Optional[List[str]] = None,
+        extra_where: Optional[Dict[str, Any]] = None,
         include_docs: bool = True,
     ) -> List[Dict[str, Any]]:
         """
@@ -137,7 +133,6 @@ class ChromaHotelSearch:
             where_and.append({"rating_raw": {"$in": rating_in}})
 
         if extra_where:
-            # Caller can pass any Chroma-compatible filter dict; we AND it in
             where_and.append(extra_where)
 
         where_clause = {"$and": where_and} if where_and else {}
@@ -153,7 +148,6 @@ class ChromaHotelSearch:
             include=include_fields
         )
 
-        # Chroma returns lists-of-lists; take first query's result
         docs = res.get("documents", [[]])[0] if include_docs else [None] * len(res["ids"][0])
         metas = res["metadatas"][0] if "metadatas" in res else [{}] * len(res["ids"][0])
         ids = res["ids"][0]
@@ -219,12 +213,10 @@ class ChromaHotelSearch:
         if raw is None or (isinstance(raw, float) and math.isnan(raw)):
             return None
         s = str(raw).strip()
-        # direct numeric?
         try:
             return float(s)
         except ValueError:
             pass
-        # simple mapping
         mapping = {
             "OneStar": 1.0, "TwoStar": 2.0, "ThreeStar": 3.0,
             "FourStar": 4.0, "FiveStar": 5.0,

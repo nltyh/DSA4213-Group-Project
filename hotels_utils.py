@@ -1,7 +1,6 @@
-# hotels_utils.py
 from typing import List, Dict, Optional
 import pandas as pd
-from chromadb_lib import ChromaHotelSearch  # your earlier class file
+from chromadb_lib import ChromaHotelSearch  
 
 def init_hotel_index(
     chroma_path: str = "./chroma_storage",
@@ -19,17 +18,13 @@ def ingest_hotels(
     df_hotel: pd.DataFrame,
     country: str,
     city: str,
-    country_col: str = " countyName", # Note: your example has a leading space
-    city_col: str = " cityName"     # Note: your example has a leading space
+    country_col: str = " countyName",
+    city_col: str = " cityName"     
 ) -> None:
     """
     Filters the DataFrame for a specific city/country BEFORE upserting.
     """
-    
-    # --- CHANGE: PRE-FILTERING THE DATAFRAME ---
     print(f"Original hotel DataFrame count: {len(df_hotel)}")
-    
-    # Use the exact column names from your example
     filtered_df = df_hotel[
         (df_hotel[country_col] == country) & 
         (df_hotel[city_col] == city)
@@ -41,7 +36,6 @@ def ingest_hotels(
         
     print(f"Filtered count for {city}, {country}: {len(filtered_df)}")
     
-    # Upsert only the filtered DataFrame
     hotels.upsert_hotels_from_df(filtered_df)
 
 def search_hotels(
