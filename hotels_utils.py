@@ -24,7 +24,7 @@ def ingest_hotels(
     """
     Filters the DataFrame for a specific city/country BEFORE upserting.
     """
-    print(f"Original hotel DataFrame count: {len(df_hotel)}")
+    # print(f"Original hotel DataFrame count: {len(df_hotel)}")
     filtered_df = df_hotel[
         (df_hotel[country_col] == country) & 
         (df_hotel[city_col] == city)
@@ -34,7 +34,7 @@ def ingest_hotels(
         print(f"Warning: No hotels found for {city}, {country}. No data ingested.")
         return
         
-    print(f"Filtered count for {city}, {country}: {len(filtered_df)}")
+    # print(f"Filtered count for {city}, {country}: {len(filtered_df)}")
     
     hotels.upsert_hotels_from_df(filtered_df)
 
