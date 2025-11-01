@@ -236,7 +236,8 @@ def summarize_flights(
 
 #--- static flight utils --- 
 _FLIGHT_ROW_RE = re.compile(
-    r"""Outbound:\s*
+    r"""^\s*\d{0,2}\.?
+        \s*Outbound:\s*
         (?P<origin>[A-Z]{3})\s+
         (?P<out_dep_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
         (?P<destination>[A-Z]{3})\s+
@@ -245,7 +246,7 @@ _FLIGHT_ROW_RE = re.compile(
         (?P<currency>[A-Z]{3})\s*
         (?P<price>[\d,\.]+)\s*\|\s*
         A(?P<adults>\d+)\s*C(?P<children>\d+)\s*
-        (?P<cabin>[A-Z ]+?)\s*\|\|\s*
+        (?P<cabin>[A-Z_ ]+?)\s*\|\|\s*
         Return\s*:\s*
         (?P<ret_origin>[A-Z]{3})\s+
         (?P<ret_dep_dt>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
