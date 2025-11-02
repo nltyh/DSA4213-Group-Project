@@ -83,49 +83,49 @@ def parse_hotels_for_display(ctx: str) -> pd.DataFrame:
     return pd.DataFrame(hotels_df)
 
 def parse_flights_for_display(ctx: str) -> pd.DataFrame:
-    """
-    Extracts flight info from the [FLIGHTS] section of CTX into a DataFrame.
-    Columns: Origin, Destination, Airline, Departure, Arrival, Price, Currency, Passenger, Class
-    """
-    flights_df = []
+    ctx = ctx.splitlines()
+    pattern = re.compile(r"""
+        \d+\.\s*Outbound:\s*
+        (?P<orig>[A-Z]{3})\s+(?P<out_dep>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
+        (?P<dest>[A-Z]{3})\s+(?P<out_arr>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*\|\s*
+        (?P<airline>[^|]+?)\s*\|\s*
+        (?P<ccy>[A-Z]{3})\s+(?P<price>[\d,]+\.\d{2})\s*\|\s*
+        (?P<travelers>A\d+\s+C\d+)\s+(?P<cabin>[A-Z_]+)\s*
+        Return\s*:?\s*
+        (?P<ret_orig>[A-Z]{3})\s+(?P<ret_dep>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s*→\s*
+        (?P<ret_dest>[A-Z]{3})\s+(?P<ret_arr>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})
+    """, re.VERBOSE | re.DOTALL)
     
-    # Extract the [FLIGHTS] section
-    flights_section = re.search(r"\[FLIGHTS\](.*?)\n\[HOTELS\]", ctx, re.DOTALL)
-    if not flights_section:
-        return pd.DataFrame()  # empty if not found
-    
-    flights_text = flights_section.group(1).strip()
-    # Split each flight (assume starts with '* Outbound' or '* Return')
-    flight_entries = re.findall(r"\* (Outbound|Return) \((.*?) → (.*?)\)\n\s*(.*?)$", flights_text, re.MULTILINE)
-    
-    for entry in flight_entries:
-        direction, origin, destination, details = entry
-        # Parse details line: airline — origin dep → dest arr | currency price | passengers class
-        m = re.match(r"(.*?) — .*? (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) → .*? (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) \| (\w+) (\d+\.?\d*) \| (.*?) (.*)", details)
-        if m:
-            airline, dep, arr, currency, price, passengers, cabin = m.groups()
-            flights_df.append({
-                "Direction": direction,
-                "Origin": origin,
-                "Destination": destination,
-                "Airline": airline.strip(),
-                "Departure": dep,
-                "Arrival": arr,
-                "Currency": currency,
-                "Price": float(price),
-                "Passenger": passengers,
-                "Class": cabin
-            })
-    return pd.DataFrame(flights_df)
+    results = []
+    buffer = None
+    for raw in ctx:
+        line = raw.strip()
+        if re.match(r"\d+\.\s*Outbound:", line):
+            buffer = line
+            continue
+        if buffer and line.startswith("Return"):
+            block = buffer + " " + line
+            m = pattern.search(block)
+            if m:
+                results.append(m.groupdict())
+                print("Matched block:\n", block)
+            else:
+                print("No match for block:\n", block)
+                pass
+            buffer = None
+    return results
+    print(results)
 
+    
 # -- Main Workflow --
 flights_df, hotels_df = load_data()
 extractor_model, agent_model, hotels_index = init_models_and_index()
 
 user_input = st.text_area(
     "Your travel query:",
-    "I need a trip from Zurich to Rome for 2 adults and 1 child, leaving next Monday and returning in two weeks. We'll fly economy. I need a 4-star or better hotel, preferably near the Vatican.",
-    height=150
+    value = "",
+    height=150,
+    help = "I would like to plan a trip from Singapore to London leaving next Monday and returning in 2 weeks. I would like to fly premium economy and I would prefer a 4-star hotel near museums."
 )
 
 if st.button("Plan My Trip"):
