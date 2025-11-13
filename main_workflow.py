@@ -154,11 +154,12 @@ def extractor(text: str, extractor_model) -> Optional[TripQuery]:
     1.  Analyze the user's text to extract all relevant travel details.
     2.  Use the provided mappings to normalize values. For example, if the user says "zurich", you must use the IATA code "ZRH". If they say "business class", use "BUSINESS".
     3.  The IATA code used MUST correspond to a airport, NOT a city code. For example, "TYO" should not be used since it is not an airport code. Use "NRT" instead.
-    4.  If a value is not mentioned in the text, omit it or set it to null in the JSON.
-    5.  Infer `hotel_city` and `hotel_country` from the main destination. If it is in the USA, write it as United States, and the city as [City],   [State] (the 3 blank spaces are intentional). For example: 'Abbeville,   Louisiana'
-    6.  The `hotel_prefs_text` field should contain the original, unmodified user text.
-    7.  Parse dates accurately. "Next Tuesday" should be calculated relative to today's date.
-    8.  Your output MUST be a valid JSON object matching the schema below.
+    4.  Choose the most popular airport for cities with multiple airports (e.g., "LHR" for London, "JFK" for New York City).
+    5.  If a value is not mentioned in the text, omit it or set it to null in the JSON.
+    6.  Infer `hotel_city` and `hotel_country` from the main destination. If it is in the USA, write it as United States, and the city as [City],   [State] (the 3 blank spaces are intentional). For example: 'Abbeville,   Louisiana'
+    7.  The `hotel_prefs_text` field should contain the original, unmodified user text.
+    8.  Parse dates accurately. "Next Tuesday" should be calculated relative to today's date.
+    9.  Your output MUST be a valid JSON object matching the schema below.
 
     SCHEMA:
     {json.dumps(schema, indent=2)}
@@ -219,9 +220,9 @@ def run_travel_bot(user_input: str):
 
     hu.ingest_hotels(hotels_index, hotels_df, country= trip.hotel_country, city= trip.hotel_city)
 
-    parsed_flights = fa.parse_flights_df(flights_df, summary_col ="summary")
+    #parsed_flights = fa.parse_flights_df(flights_df, summary_col ="summary")
 
-    flight_results = fa.pick_flight(
+    '''flight_results = fa.pick_flight(
         parsed_flights,
         origin=trip.origin,
         destination=trip.destination,
@@ -230,11 +231,11 @@ def run_travel_bot(user_input: str):
         fare_type=trip.cabin
     )
 
-    flight_context = fa.flights_context(flight_results)
+    flight_context = fa.flights_context(flight_results)'''
 
     # Flights api calls
-    #flight_results= fa.search_flights_api(trip)
-    #flight_context = "\n".join(flight_results)
+    flight_results= fa.search_flights_api(trip)
+    flight_context = "\n".join(flight_results)
 
     # Hotels: semantic prefs + filters
     hotel_hits = hu.search_hotels(
