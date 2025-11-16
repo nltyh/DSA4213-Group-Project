@@ -26,6 +26,7 @@ requests
 urllib3
 
 # Evaluation
+evaluate
 nltk
 
 # Cleaning / Parsing helpers
