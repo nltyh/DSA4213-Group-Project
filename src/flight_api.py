@@ -1,4 +1,3 @@
-from amadeus import Client, ResponseError, NetworkError
 import json,re, http.client, ssl, certifi
 import pandas as pd
 from typing import Optional, Tuple
@@ -27,10 +26,10 @@ class TripQuery(BaseModel):
     hotel_prefs_text: Optional[str] = None
     
 def search_flights_api(query: TripQuery) -> list:
-    #HEADERS = {
-        #'x-rapidapi-key': "24a885e2b0msh7f84b128bea0d8fp1ddb72jsn845249d7f278",
-        #'x-rapidapi-host': "booking-com15.p.rapidapi.com",
-    #}
+    HEADERS = {
+        'x-rapidapi-key': "24a885e2b0msh7f84b128bea0d8fp1ddb72jsn845249d7f278",
+        'x-rapidapi-host': "booking-com15.p.rapidapi.com",
+    }
     # -----------------------
     params = {
         "fromId": f"{query.origin}.AIRPORT",

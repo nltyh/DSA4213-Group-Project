@@ -14,13 +14,9 @@ from main_workflow import *
 st.set_page_config(page_title=" RoamEasy: AI Travel Assistant", layout="wide")
 st.title("🤖 RoamEasy: AI Travel Assistant")
 st.caption("Enter your travel plans with exact dates and locations, and I'll find flights and hotels.")
+st.caption("All flights and hotels are brought to you by [Booking.com](https://www.booking.com)")
 
-
-# -- Load Data and Configure Generative AI --
-
-GEMINI_API_KEY = "AIzaSyBNHTOBkzNbpcywUrTWruS3d_wFKTayPqA"
-genai.configure(api_key=GEMINI_API_KEY)
-
+# -- Load Data --
 def parse_hotels_for_display(ctx: str) -> pd.DataFrame:
     """
     Extracts hotel info from the [HOTELS] section of CTX into a DataFrame.

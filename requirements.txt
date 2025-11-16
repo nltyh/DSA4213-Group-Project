@@ -1,0 +1,39 @@
+# Core App
+streamlit
+pandas
+numpy
+tqdm
+
+# Web scraping (BeautifulSoup)
+beautifulsoup4
+
+# LLM + Gemini API
+google-generativeai
+
+# Vector DB + Embeddings
+chromadb
+sentence-transformers
+scipy     
+
+# Data validation
+pydantic>=2.0
+
+# Date/time parsing
+python-dateutil
+
+# Networking & APIs
+requests
+urllib3
+
+# Evaluation
+nltk
+
+# Cleaning / Parsing helpers
+regex
+
+# Flight/Hotel utilities
+certifi
+
+# Optional but commonly required
+protobuf
+httpx

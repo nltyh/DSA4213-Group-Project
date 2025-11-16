@@ -10,6 +10,7 @@ import google.generativeai as genai
 from datetime import date, datetime
 from typing import Optional, Literal
 from pydantic import BaseModel, ValidationError
+from pathlib import Path
 import json
 
 GEMINI_API_KEY = "AIzaSyAHVQrSPHOBK1PHJPlG_1janyRUuRLgIvI"
@@ -52,12 +53,12 @@ Formatting Rules:
 - Write the full class type (e.g., “ECONOMY”).
 - Dates/times format: “DD Mon YYYY HH:MM”.
 """
-
+# -- Load Data Functions --
 @st.cache_data
 def load_data():
     """Loads dataframes. Creates mock data if files are missing."""
     try:
-        flights_df = pd.read_csv("flights_data.csv")
+        flights_df = pd.read_csv("data/flights_data.csv")
     except FileNotFoundError:
         st.warning("flights_data.csv not found. Using mock flight data.")
         flights_df = pd.DataFrame({
@@ -72,7 +73,7 @@ def load_data():
         })
     
     try:
-        hotels_df = pd.read_parquet("hotels.parquet")
+        hotels_df = pd.read_parquet("data/hotels.parquet")
     except FileNotFoundError:
         st.warning("hotels.parquet not found. Using mock hotel data.")
         hotels_df = pd.DataFrame({
