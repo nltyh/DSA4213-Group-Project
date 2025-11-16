@@ -20,7 +20,7 @@ RoamEasy uses a Retrieval-Augmented Generation (RAG) pipeline:
 
 * **Flights**: retrieved via a live **RapidAPI** flight search tool (Booking.com data)
 * **Hotels**: retrieved from a static Booking.com hotels dataset from Kaggle
-  (`https://www.kaggle.com/datasets/raj713335/tbo-hotels-dataset` – Booking.com TBO Hotels)
+  (`https://www.kaggle.com/datasets/raj713335/tbo-hotels-dataset` – Booking.com Hotels)
 
 The hotels dataset is embedded by a sentence-embedding model (MiniLM / Sentence-T5 / MPNet) and stored in **ChromaDB**, enabling semantic search over hotel descriptions, facilities, and attractions.
 
